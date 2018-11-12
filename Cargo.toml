@@ -1,0 +1,6 @@
+[package]
+name = "hackassembler"
+version = "0.1.0"
+authors = ["Levi McCallum <levi@levimccallum.com>"]
+
+[dependencies]
