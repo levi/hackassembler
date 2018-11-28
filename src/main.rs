@@ -110,7 +110,7 @@ impl<'a> Scanner<'a> {
         match cursor {
             '\0' => Ok(self.token(TokenType::End)),
             '@' => {
-                let identifier = self.grab_until_whitespace();
+                let identifier = self.grab_while(|c| !c.is_whitespace());
                 Ok(self.token(TokenType::Identifier(identifier)))
             },
             '(' => {
@@ -171,16 +171,6 @@ impl<'a> Scanner<'a> {
 
     fn scanner_error(&self, reason: &str) -> ScannerError {
         ScannerError::new(reason, self.line_num)
-    }
-
-    /// Returns a string of all characters until the end of the line
-    fn grab_to_end(&mut self) -> String {
-        self.grab_while(|c| c != '\0')
-    }
-
-    /// Returns a string of all future characters until whitepsace is encountered
-    fn grab_until_whitespace(&mut self) -> String {
-        self.grab_while(|c| !c.is_whitespace())
     }
 
     /// Returns a string of all future characters until the predicate is false
