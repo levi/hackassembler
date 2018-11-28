@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::str::Chars;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -23,7 +23,33 @@ pub enum TokenType {
     JumpLessThan,
     JumpNotEqual,
     JumpLessThanEqual,
-    EOF,
+    End,
+}
+
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let readable_name = match self {
+            TokenType::Label(l) => format!("Label({})", l),
+            TokenType::Identifier(i) => format!("Identifier({})", i),
+            TokenType::Equal => format!("Equal"),
+            TokenType::Plus => format!("Plus"),
+            TokenType::Minus => format!("Minus"),
+            TokenType::Memory => format!("Memory"),
+            TokenType::DRegister => format!("D Register"),
+            TokenType::ARegister => format!("A Register"),
+            TokenType::Semicolon => format!("Semicolon"),
+            TokenType::Number(n) => format!("Number({})", n),
+            TokenType::Jump => format!("Jump"),
+            TokenType::JumpGreaterThan => format!("Jump Greater Than"),
+            TokenType::JumpEqual => format!("Jump Equal"),
+            TokenType::JumpGreaterThanEqual => format!("Jump Greater Than Equal"),
+            TokenType::JumpLessThan => format!("Jump Less Than"),
+            TokenType::JumpNotEqual => format!("Jump Not Equal"),
+            TokenType::JumpLessThanEqual => format!("Jump Less Than Equal"),
+            TokenType::End => format!("End"),
+        };
+        write!(f, "{}", readable_name)
+    } 
 }
 
 // @CAPITALLETERNAME
@@ -51,6 +77,13 @@ impl Token {
     }
 }
 
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Token: {}, Line: {}", self.token, self.line)
+    } 
+}
+
+#[derive(Debug)]
 pub struct ScannerError {
     line_num: u32,
 }
@@ -64,59 +97,111 @@ impl ScannerError {
 }
 
 pub struct Scanner<'a> {
-    iter: std::iter::Peekable<Chars<'a>>,
+    iter: std::str::Chars<'a>,
+    cursor: char,
+    peek: char,
+    pub error: Option<ScannerError>,
     line_num: u32,
+}
+
+impl<'a> Iterator for Scanner<'a> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Token> {
+        if self.at_end() {
+            return None;
+        }
+
+        match self.error.as_ref() {
+            Some(_) => None,
+            None => {
+                match self.parse_token() {
+                    Ok(token) => Some(token),
+                    Err(err) => {
+                        self.error = Some(err);
+                        None
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(line: &str, line_num: u32) -> Scanner {
-        let mut iter = line.chars().peekable();
+        let mut iter = line.chars();
+        let peek = iter.next();
         Scanner {
             iter: iter,
+            cursor: ' ',
+            error: None,
+            peek: match peek { Some(c) => c, None => '\0' },
             line_num: line_num,
         }
     }
 
-    fn parse_token(&self) -> Result<Option<Token>, ScannerError> {
-        match self.advance() {
+    pub fn parse_token(&mut self) -> Result<Token, ScannerError> {
+        // Skip whitespace characteres
+        while self.peek.is_whitespace() {
+            let _ = self.advance_cursor();
+        }
+
+        let cursor = self.advance_cursor();
+        match cursor {
+            '\0' => Ok(self.token(TokenType::End)),
             '@' => {
                 let identifier = self.grab_to_end();
-                Ok(Some(Token::new(TokenType::Identifier(identifier), self.line_num)))
+                Ok(self.token(TokenType::Identifier(identifier)))
             },
             '(' => {
-                let mut s = String::new();
-                while self.peek() != ')' && !self.is_end() {
-                    s.push(self.advance());
-                }
-                if self.is_end() {
+                let s = self.grab_to_end();
+                if self.cursor != ')' {
                     // TODO: Raise unterminated label error
                     return Err(self.scanner_error());
                 }
-                let _ = self.advance();
-                Ok(Some(self.token(TokenType::Label(s))))
+                Ok(self.token(TokenType::Label(s)))
             },
-            'A' => Ok(Some(self.token(TokenType::ARegister))),
-            'D' => Ok(Some(self.token(TokenType::DRegister))),
-            'M' => Ok(Some(self.token(TokenType::Memory))),
-            '=' => Ok(Some(self.token(TokenType::Equal))),
-            '-' => Ok(Some(self.token(TokenType::Minus))),
-            '+' => Ok(Some(self.token(TokenType::Plus))),
-            ';' => Ok(Some(self.token(TokenType::Semicolon))),
+            'A' => Ok(self.token(TokenType::ARegister)),
+            'D' => Ok(self.token(TokenType::DRegister)),
+            'M' => Ok(self.token(TokenType::Memory)),
+            '=' => Ok(self.token(TokenType::Equal)),
+            '-' => Ok(self.token(TokenType::Minus)),
+            '+' => Ok(self.token(TokenType::Plus)),
+            ';' => Ok(self.token(TokenType::Semicolon)),
             '/' => {
-                if self.match('/') {
-                    Ok(None)
+                if self.peek == '/' {
+                    self.cursor = '\0';
+                    self.peek = '\0';
+                    Ok(self.token(TokenType::End))
                 } else {
                     // TODO: Raise unexpected slash error
                     Err(self.scanner_error())
                 }
             },
-            '\t' => Ok(None),
-            ' ' => Ok(None),
-            'J' => {}, // TODO: grab jump statements
+            'J' => {
+                let keyword = self.grab_cursor_while(|c| c != '\0');
+                match keyword.as_ref() {
+                    "JGT" => Ok(self.token(TokenType::JumpGreaterThan)),
+                    "JEQ" => Ok(self.token(TokenType::JumpEqual)),
+                    "JGE" => Ok(self.token(TokenType::JumpGreaterThanEqual)),
+                    "JLT" => Ok(self.token(TokenType::JumpLessThan)),
+                    "JNE" => Ok(self.token(TokenType::JumpNotEqual)),
+                    "JLE" => Ok(self.token(TokenType::JumpLessThanEqual)),
+                    "JMP" => Ok(self.token(TokenType::Jump)),
+                    _ => {
+                        // TODO: Error
+                        Err(self.scanner_error())
+                    },
+                }
+            },
             _ => {
-                // TODO: Digits
-                return Token::new(TokenType::Number(0), String::new(), self.line_num),
-                // TODO: Error if nothing
+                if cursor.is_digit(10) {
+                    let buf = self.grab_cursor_while(|c| c.is_digit(10));
+                    let num = buf.parse::<u32>().unwrap();
+                    return Ok(self.token(TokenType::Number(num)));
+                }
+
+                Err(self.scanner_error())
             }
         }
     }
@@ -129,52 +214,52 @@ impl<'a> Scanner<'a> {
         ScannerError::new(self.line_num)
     }
 
-    fn peek(&self) -> char {
-        self.current_char
-    }
-
-    fn advance(&mut self) -> char {
-        let old_ch = self.current_char;
-        self.current_char = match self.iter.next() {
-            Some(c) => c,
-            None => '\0',
-        };
-        old_ch
-    }
-
-    fn match(&mut self, expected: char) -> bool {
-        if self.is_end() {
-            return false
-        }
-
-    }
-
+    /// Returns a string of all characters until the end of the line
     fn grab_to_end(&mut self) -> String {
         self.grab_while(|c| c != '\0')
     }
 
+    /// Returns a string of all future characters until whitepsace is encountered
+    fn grab_until_whitespace(&mut self) -> String {
+        self.grab_while(|c| !c.is_whitespace())
+    }
+
+    /// Returns a string of all future characters until the predicate is false
     fn grab_while<F>(&mut self, predicate: F) -> String where F: Fn(char) -> bool {
         let mut s = String::new();
-        self.take_while_into(&mut s, predicate);
+        self.take_while(&mut s, predicate);
         s
     }
 
-    fn take_while_into<F>(&mut self, s: &mut String, predicate: F) where F: Fn(char) -> bool {
-        if !self.is_end() {
-            s.push(self.current_char);
+    /// Returns a string of all the characters from the cursor until the predicate is false
+    fn grab_cursor_while<F>(&mut self, predicate: F) -> String where F: Fn(char) -> bool {
+        let mut s = String::new();
+        if !self.at_end() {
+            s.push(self.cursor);
         }
-        while let Some(c) = self.iter.next() {
-            if !predicate(c) {
-                self.current_char = c;
-                return;
-            }
-            s.push(c);
-        }
-        self.current_char = '\0';
+        self.take_while(&mut s, predicate);
+        s
     }
 
-    fn is_end(&self) -> bool {
-        self.current_char == '\0'
+    fn take_while<F>(&mut self, s: &mut String, predicate: F) where F: Fn(char) -> bool {
+        while predicate(self.peek) {
+            s.push(self.advance_cursor());
+        }
+    }
+
+    /// Advance the cursor, returning the new cursor result
+    fn advance_cursor(&mut self) -> char {
+        self.cursor = self.peek;
+        self.peek = match self.iter.next() {
+            Some(c) => c,
+            None => '\0',
+        };
+        self.cursor
+    }
+
+    /// Determines if the scanner is at the end of the line
+    fn at_end(&mut self) -> bool {
+        self.cursor == '\0'
     }
 }
 
@@ -216,8 +301,13 @@ fn main() -> std::io::Result<()> {
         let file = File::open(filename)?;
         let mut sl = Scanlines::new(file);
         while let Some(line) = sl.next() {
-
-//            println!("Token: {}", token);
+            let mut line = line?;
+            while let Some(token) = line.next() {
+                println!("Token: {:?}", token);
+            }
+            if let Some(err) = line.error {
+                println!("Error: {:?}", err);
+            }
         }
     }
 
