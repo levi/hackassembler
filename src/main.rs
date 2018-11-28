@@ -2,7 +2,6 @@ use std::env;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::fmt;
 
 #[derive(Debug)]
 pub enum TokenType {
@@ -11,6 +10,7 @@ pub enum TokenType {
     Equal,
     Plus,
     Minus,
+    Not,
     Memory,
     DRegister,
     ARegister,
@@ -25,42 +25,6 @@ pub enum TokenType {
     JumpLessThanEqual,
     End,
 }
-
-impl fmt::Display for TokenType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let readable_name = match self {
-            TokenType::Label(l) => format!("Label({})", l),
-            TokenType::Identifier(i) => format!("Identifier({})", i),
-            TokenType::Equal => format!("Equal"),
-            TokenType::Plus => format!("Plus"),
-            TokenType::Minus => format!("Minus"),
-            TokenType::Memory => format!("Memory"),
-            TokenType::DRegister => format!("D Register"),
-            TokenType::ARegister => format!("A Register"),
-            TokenType::Semicolon => format!("Semicolon"),
-            TokenType::Number(n) => format!("Number({})", n),
-            TokenType::Jump => format!("Jump"),
-            TokenType::JumpGreaterThan => format!("Jump Greater Than"),
-            TokenType::JumpEqual => format!("Jump Equal"),
-            TokenType::JumpGreaterThanEqual => format!("Jump Greater Than Equal"),
-            TokenType::JumpLessThan => format!("Jump Less Than"),
-            TokenType::JumpNotEqual => format!("Jump Not Equal"),
-            TokenType::JumpLessThanEqual => format!("Jump Less Than Equal"),
-            TokenType::End => format!("End"),
-        };
-        write!(f, "{}", readable_name)
-    } 
-}
-
-// @CAPITALLETERNAME
-// dest=comp;jump
-// JGT
-// JEQ
-// JGE
-// JLT
-// JNE
-// JLE
-// JMP
 
 #[derive(Debug)]
 pub struct Token {
@@ -77,20 +41,16 @@ impl Token {
     }
 }
 
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Token: {}, Line: {}", self.token, self.line)
-    } 
-}
-
 #[derive(Debug)]
 pub struct ScannerError {
+    reason: String,
     line_num: u32,
 }
 
 impl ScannerError {
-    fn new(line_num: u32) -> ScannerError {
+    fn new(reason: &str, line_num: u32) -> ScannerError {
         ScannerError{
+            reason: String::from(reason),
             line_num: line_num,
         }
     }
@@ -150,15 +110,15 @@ impl<'a> Scanner<'a> {
         match cursor {
             '\0' => Ok(self.token(TokenType::End)),
             '@' => {
-                let identifier = self.grab_to_end();
+                let identifier = self.grab_until_whitespace();
                 Ok(self.token(TokenType::Identifier(identifier)))
             },
             '(' => {
-                let s = self.grab_to_end();
-                if self.cursor != ')' {
-                    // TODO: Raise unterminated label error
-                    return Err(self.scanner_error());
+                let s = self.grab_while(|c| c != ')' && !c.is_whitespace());
+                if self.peek != ')' {
+                    return Err(self.scanner_error("Expected label to be terminated by closing )"));
                 }
+                let _ = self.advance_cursor();
                 Ok(self.token(TokenType::Label(s)))
             },
             'A' => Ok(self.token(TokenType::ARegister)),
@@ -167,6 +127,7 @@ impl<'a> Scanner<'a> {
             '=' => Ok(self.token(TokenType::Equal)),
             '-' => Ok(self.token(TokenType::Minus)),
             '+' => Ok(self.token(TokenType::Plus)),
+            '!' => Ok(self.token(TokenType::Not)),
             ';' => Ok(self.token(TokenType::Semicolon)),
             '/' => {
                 if self.peek == '/' {
@@ -174,12 +135,11 @@ impl<'a> Scanner<'a> {
                     self.peek = '\0';
                     Ok(self.token(TokenType::End))
                 } else {
-                    // TODO: Raise unexpected slash error
-                    Err(self.scanner_error())
+                    Err(self.scanner_error("Unexpected slash character"))
                 }
             },
             'J' => {
-                let keyword = self.grab_cursor_while(|c| c != '\0');
+                let keyword = self.grab_cursor_while(|c| !c.is_whitespace());
                 match keyword.as_ref() {
                     "JGT" => Ok(self.token(TokenType::JumpGreaterThan)),
                     "JEQ" => Ok(self.token(TokenType::JumpEqual)),
@@ -189,8 +149,7 @@ impl<'a> Scanner<'a> {
                     "JLE" => Ok(self.token(TokenType::JumpLessThanEqual)),
                     "JMP" => Ok(self.token(TokenType::Jump)),
                     _ => {
-                        // TODO: Error
-                        Err(self.scanner_error())
+                        Err(self.scanner_error("Unexpected jump type"))
                     },
                 }
             },
@@ -201,7 +160,7 @@ impl<'a> Scanner<'a> {
                     return Ok(self.token(TokenType::Number(num)));
                 }
 
-                Err(self.scanner_error())
+                Err(self.scanner_error("Unexpected character"))
             }
         }
     }
@@ -210,8 +169,8 @@ impl<'a> Scanner<'a> {
         Token::new(token, self.line_num)
     }
 
-    fn scanner_error(&self) -> ScannerError {
-        ScannerError::new(self.line_num)
+    fn scanner_error(&self, reason: &str) -> ScannerError {
+        ScannerError::new(reason, self.line_num)
     }
 
     /// Returns a string of all characters until the end of the line
