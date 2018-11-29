@@ -25,9 +25,9 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = Token;
+    type Item = Result<Token, ScannerError>;
 
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<Result<Token, ScannerError>> {
         if self.at_end() {
             return None;
         }
@@ -36,10 +36,10 @@ impl<'a> Iterator for Scanner<'a> {
             Some(_) => None,
             None => {
                 match self.parse_token() {
-                    Ok(token) => Some(token),
+                    Ok(t) => Some(Ok(t)),
                     Err(err) => {
                         self.error = Some(err);
-                        None
+                        Some(Err(err))
                     }
                 }
             }
@@ -63,12 +63,12 @@ impl<'a> Scanner<'a> {
     pub fn parse_token(&mut self) -> Result<Token, ScannerError> {
         // Skip whitespace characteres
         while self.peek.is_whitespace() {
-            let _ = self.advance_cursor();
+            let _ = self.advance();
         }
 
-        let cursor = self.advance_cursor();
+        let cursor = self.advance();
         match cursor {
-            '\0' => Ok(self.token(TokenType::End)),
+            '\0' => Ok(self.token(TokenType::NewLine)),
             '@' => {
                 let identifier = self.grab_while(|c| !c.is_whitespace());
                 Ok(self.token(TokenType::Identifier(identifier)))
@@ -78,7 +78,7 @@ impl<'a> Scanner<'a> {
                 if self.peek != ')' {
                     return Err(self.scanner_error("Expected label to be terminated by closing )"));
                 }
-                let _ = self.advance_cursor();
+                let _ = self.advance();
                 Ok(self.token(TokenType::Label(s)))
             },
             'A' => Ok(self.token(TokenType::ARegister)),
@@ -93,7 +93,7 @@ impl<'a> Scanner<'a> {
                 if self.peek == '/' {
                     self.cursor = '\0';
                     self.peek = '\0';
-                    Ok(self.token(TokenType::End))
+                    Ok(self.token(TokenType::NewLine))
                 } else {
                     Err(self.scanner_error("Unexpected slash character"))
                 }
@@ -152,12 +152,12 @@ impl<'a> Scanner<'a> {
 
     fn take_while<F>(&mut self, s: &mut String, predicate: F) where F: Fn(char) -> bool {
         while predicate(self.peek) {
-            s.push(self.advance_cursor());
+            s.push(self.advance());
         }
     }
 
     /// Advance the cursor, returning the new cursor result
-    fn advance_cursor(&mut self) -> char {
+    fn advance(&mut self) -> char {
         self.cursor = self.peek;
         self.peek = match self.iter.next() {
             Some(c) => c,

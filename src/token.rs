@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum TokenType {
     Label(String),
     Identifier(String),
@@ -18,7 +18,8 @@ pub enum TokenType {
     JumpLessThan,
     JumpNotEqual,
     JumpLessThanEqual,
-    End,
+    NewLine,
+    EOF
 }
 
 #[derive(Debug)]
