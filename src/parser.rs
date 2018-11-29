@@ -79,9 +79,6 @@ impl Parser {
     fn dest(&mut self) -> Result<Vec<Token>> {
         let mut dest: Vec<Token> = Vec::with_capacity(3);
         while self.match_any(&[ARegister, DRegister, Memory]) {
-            if dest.len() > 3 {
-                return Err(self.error("Too many destinations given"))
-            }
             let token = self.previous();
             if dest.contains(&token) {
                 return Err(self.error("Duplicate destination"))
