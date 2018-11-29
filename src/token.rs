@@ -1,4 +1,4 @@
-#[derive(Debug,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum TokenType {
     Label(String),
     Identifier(String),
@@ -6,6 +6,8 @@ pub enum TokenType {
     Plus,
     Minus,
     Not,
+    Ampersand,
+    Pipe,
     Memory,
     DRegister,
     ARegister,
@@ -22,7 +24,7 @@ pub enum TokenType {
     EOF
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Token {
     pub token: TokenType,
     pub line: u32,

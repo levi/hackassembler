@@ -38,14 +38,22 @@ fn main() -> std::io::Result<()> {
             }
         }
 
+        // Add end of file to make the parser happy
+        let mut last_line: u32 = 0;
         if let Some(t) = tokens.last() {
-            tokens.push(Token::new(TokenType::EOF, t.line + 1));
+            last_line = t.line;
         }
-
-        let p = Parser::new(tokens);
-        let codes = p.parse();
-
-        println!("{:?}", codes);
+        tokens.push(Token::new(TokenType::EOF, last_line + 1));
+        
+        let mut p = Parser::new(tokens);
+        match p.parse() {
+            Ok(codes) => {
+                for code in codes {
+                    println!("{:?}", code)
+                }
+            },
+            Err(err) => println!("Parser error: {:?}", err),
+        }
     }
 
     Ok(())

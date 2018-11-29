@@ -20,7 +20,7 @@ pub struct Scanner<'a> {
     iter: std::str::Chars<'a>,
     cursor: char,
     peek: char,
-    pub error: Option<ScannerError>,
+    did_error: bool,
     line_num: u32,
 }
 
@@ -32,16 +32,15 @@ impl<'a> Iterator for Scanner<'a> {
             return None;
         }
 
-        match self.error.as_ref() {
-            Some(_) => None,
-            None => {
-                match self.parse_token() {
-                    Ok(t) => Some(Ok(t)),
-                    Err(err) => {
-                        self.error = Some(err);
-                        Some(Err(err))
-                    }
-                }
+        if self.did_error {
+            return None
+        }
+
+        match self.parse_token() {
+            Ok(t) => Some(Ok(t)),
+            Err(err) => {
+                self.did_error = true;
+                Some(Err(err))
             }
         }
     }
@@ -54,7 +53,7 @@ impl<'a> Scanner<'a> {
         Scanner {
             iter: iter,
             cursor: ' ',
-            error: None,
+            did_error: false,
             peek: match peek { Some(c) => c, None => '\0' },
             line_num: line_num,
         }
@@ -87,6 +86,8 @@ impl<'a> Scanner<'a> {
             '=' => Ok(self.token(TokenType::Equal)),
             '-' => Ok(self.token(TokenType::Minus)),
             '+' => Ok(self.token(TokenType::Plus)),
+            '&' => Ok(self.token(TokenType::Ampersand)),
+            '|' => Ok(self.token(TokenType::Pipe)),
             '!' => Ok(self.token(TokenType::Not)),
             ';' => Ok(self.token(TokenType::Semicolon)),
             '/' => {
