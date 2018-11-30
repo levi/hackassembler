@@ -1,20 +1,5 @@
 use token::Token;
-use token::TokenType;
-
-#[derive(Debug)]
-pub struct ScannerError {
-    reason: String,
-    line_num: u32,
-}
-
-impl ScannerError {
-    fn new(reason: &str, line_num: u32) -> ScannerError {
-        ScannerError{
-            reason: String::from(reason),
-            line_num: line_num,
-        }
-    }
-}
+use token::TokenKind;
 
 pub struct Scanner<'a> {
     iter: std::str::Chars<'a>,
@@ -62,45 +47,45 @@ impl<'a> Scanner<'a> {
     pub fn parse_token(&mut self) -> Result<Token, ScannerError> {
         // Skip whitespace characteres
         while self.peek.is_whitespace() {
-            let _ = self.advance();
+            let _ = self.push();
         }
 
-        let cursor = self.advance();
+        let cursor = self.push();
         match cursor {
-            '\0' => Ok(self.token(TokenType::NewLine)),
+            '\0' => Ok(self.token(TokenKind::NewLine)),
             '@' => {
                 let value = self.grab_while(|c| !c.is_whitespace());
                 Ok(self.token(match value.parse::<u32>() {
-                    Some(n) => TokenType::Address(n),
-                    None => TokenType::Identifier(value),
+                    Ok(n) => TokenKind::Address(n),
+                    Err(_) => TokenKind::Identifier(value),
                 }))
             },
             '(' => {
-                if self.peek().is_digit(10) {
+                if self.peek.is_digit(10) {
                     return Err(self.scanner_error("Symbol cannot start with a digit"));
                 }
                 let s = self.grab_while(|c| c != ')' && !c.is_whitespace());
                 if self.peek != ')' {
                     return Err(self.scanner_error("Expected Symbol to be terminated by closing )"));
                 }
-                let _ = self.advance();
-                Ok(self.token(TokenType::Symbol(s)))
+                let _ = self.push();
+                Ok(self.token(TokenKind::Symbol(s)))
             },
-            'A' => Ok(self.token(TokenType::ARegister)),
-            'D' => Ok(self.token(TokenType::DRegister)),
-            'M' => Ok(self.token(TokenType::Memory)),
-            '=' => Ok(self.token(TokenType::Equal)),
-            '-' => Ok(self.token(TokenType::Minus)),
-            '+' => Ok(self.token(TokenType::Plus)),
-            '&' => Ok(self.token(TokenType::And)),
-            '|' => Ok(self.token(TokenType::Or)),
-            '!' => Ok(self.token(TokenType::Not)),
-            ';' => Ok(self.token(TokenType::Semicolon)),
+            'A' => Ok(self.token(TokenKind::ARegister)),
+            'D' => Ok(self.token(TokenKind::DRegister)),
+            'M' => Ok(self.token(TokenKind::Memory)),
+            '=' => Ok(self.token(TokenKind::Equal)),
+            '-' => Ok(self.token(TokenKind::Minus)),
+            '+' => Ok(self.token(TokenKind::Plus)),
+            '&' => Ok(self.token(TokenKind::And)),
+            '|' => Ok(self.token(TokenKind::Or)),
+            '!' => Ok(self.token(TokenKind::Not)),
+            ';' => Ok(self.token(TokenKind::Semicolon)),
             '/' => {
                 if self.peek == '/' {
                     self.cursor = '\0';
                     self.peek = '\0';
-                    Ok(self.token(TokenType::NewLine))
+                    Ok(self.token(TokenKind::NewLine))
                 } else {
                     Err(self.scanner_error("Unexpected slash character"))
                 }
@@ -108,13 +93,13 @@ impl<'a> Scanner<'a> {
             'J' => {
                 let keyword = self.grab_cursor_while(|c| !c.is_whitespace());
                 match keyword.as_ref() {
-                    "JGT" => Ok(self.token(TokenType::JumpGreaterThan)),
-                    "JEQ" => Ok(self.token(TokenType::JumpEqual)),
-                    "JGE" => Ok(self.token(TokenType::JumpGreaterThanEqual)),
-                    "JLT" => Ok(self.token(TokenType::JumpLessThan)),
-                    "JNE" => Ok(self.token(TokenType::JumpNotEqual)),
-                    "JLE" => Ok(self.token(TokenType::JumpLessThanEqual)),
-                    "JMP" => Ok(self.token(TokenType::Jump)),
+                    "JGT" => Ok(self.token(TokenKind::JumpGreaterThan)),
+                    "JEQ" => Ok(self.token(TokenKind::JumpEqual)),
+                    "JGE" => Ok(self.token(TokenKind::JumpGreaterThanEqual)),
+                    "JLT" => Ok(self.token(TokenKind::JumpLessThan)),
+                    "JNE" => Ok(self.token(TokenKind::JumpNotEqual)),
+                    "JLE" => Ok(self.token(TokenKind::JumpLessThanEqual)),
+                    "JMP" => Ok(self.token(TokenKind::Jump)),
                     _ => {
                         Err(self.scanner_error("Unexpected jump type"))
                     },
@@ -124,7 +109,7 @@ impl<'a> Scanner<'a> {
                 if cursor.is_digit(10) {
                     let buf = self.grab_cursor_while(|c| c.is_digit(10));
                     let num = buf.parse::<u32>().unwrap();
-                    return Ok(self.token(TokenType::Number(num)));
+                    return Ok(self.token(TokenKind::Number(num)));
                 }
 
                 Err(self.scanner_error("Unexpected character"))
@@ -132,8 +117,8 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn token(&self, token: TokenType) -> Token {
-        Token::new(token, self.line_num)
+    fn token(&self, kind: TokenKind) -> Token {
+        Token::new(kind, self.line_num)
     }
 
     fn scanner_error(&self, reason: &str) -> ScannerError {
@@ -164,7 +149,7 @@ impl<'a> Scanner<'a> {
     }
 
     /// Advance the cursor, returning the new cursor result
-    fn advance(&mut self) -> char {
+    fn push(&mut self) -> char {
         self.cursor = self.peek;
         self.peek = match self.iter.next() {
             Some(c) => c,
@@ -178,3 +163,26 @@ impl<'a> Scanner<'a> {
         self.cursor == '\0'
     }
 }
+
+#[derive(Debug)]
+pub struct ScannerError {
+    description: String,
+    line: u32,
+}
+
+impl ScannerError {
+    fn new(description: &str, line: u32) -> ScannerError {
+        ScannerError{
+            description: String::from(description),
+            line: line,
+        }
+    }
+}
+
+impl std::fmt::Display for ScannerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Syntax error: [Line {}] {} ", self.line, self.description)
+    }
+}
+
+impl std::error::Error for ScannerError {}

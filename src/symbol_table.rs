@@ -13,7 +13,7 @@ impl SymbolTable {
 
     pub fn add_symbol(&mut self, symbol: &str, address: u16) {
         if self.address_for(symbol) == None {
-            self.symbols.insert(symbol, address);
+            self.symbols.insert(symbol.to_string(), address);
         }
     }
 

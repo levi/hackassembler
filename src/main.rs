@@ -19,11 +19,12 @@ fn main() {
     } else {
         let now = SystemTime::now();
 
-        let a = Assembler::new();
         let filepath = &args[1];
         println!("Assembling: {}", filepath);
+
+        let mut a = Assembler::new();
         match a.assemble_file(filepath) {
-            Ok(s) => {
+            Ok(_) => {
                 if let Ok(elapsed) = now.elapsed() {
                     println!("Compilation successful. Done in {} seconds!", elapsed.subsec_nanos() as f64 / 1000_000_000_f64);
                 }

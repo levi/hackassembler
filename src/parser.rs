@@ -1,22 +1,7 @@
 use std::vec::Vec;
 use token::*;
-use token::TokenType::*;
-use code::{Instruction, Expression};
-
-#[derive(Debug)]
-pub struct ParserError {
-    token: Token,
-    description: String,
-}
-
-impl ParserError {
-    pub fn new(token: Token, description: &str) -> ParserError {
-        ParserError{
-            token: token,
-            description: String::from(description),
-        }
-    }
-}
+use token::TokenKind::*;
+use instruction::{Instruction, Expression};
 
 type Result<T> = std::result::Result<T, ParserError>;
 
@@ -49,7 +34,7 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Instruction> {
-        let statement = match self.peek().token {
+        let statement = match self.peek().kind {
             Symbol(_) => self.symbol()?,
             Address(_) | Identifier(_) => self.a_instruction()?,
             _ => self.c_instruction()?, 
@@ -157,7 +142,7 @@ impl Parser {
     }
 
     /// Pushes the cursor if the current matches the provided token
-    fn match_one(&mut self, t: TokenType) -> bool {
+    fn match_one(&mut self, t: TokenKind) -> bool {
         if self.check(&t) {
             self.push();
             return true;
@@ -166,7 +151,7 @@ impl Parser {
     }
 
     /// Pushes the cursor if the current matches any of the provided tokens
-    fn match_any(&mut self, tokens: &[TokenType]) -> bool {
+    fn match_any(&mut self, tokens: &[TokenKind]) -> bool {
         for t in tokens {
             if self.check(t) {
                 self.push();
@@ -177,7 +162,7 @@ impl Parser {
     }
 
     /// Pushes the cursor, erroring when the current doesn't match the provided token
-    fn try_push(&mut self, t: TokenType, description: &str) -> Result<Token> {
+    fn try_push(&mut self, t: TokenKind, description: &str) -> Result<Token> {
         if !self.check(&t) {
             return Err(self.error(description))
         }
@@ -198,11 +183,11 @@ impl Parser {
     }
 
     /// Check if the current token matches the provided type
-    fn check(&self, t: &TokenType) -> bool {
+    fn check(&self, t: &TokenKind) -> bool {
         if self.at_end() {
             return false
         }
-        self.peek().token == *t
+        self.peek().kind == *t
     }
 
     /// Look at the token at the current cursor position
@@ -217,6 +202,29 @@ impl Parser {
 
     /// Determine if the parser is at the end of the file
     fn at_end(&self) -> bool {
-        self.peek().token == TokenType::EOF
+        self.peek().kind == TokenKind::EOF
     }
 }
+
+#[derive(Debug)]
+pub struct ParserError {
+    token: Token,
+    description: String,
+}
+
+impl ParserError {
+    pub fn new(token: Token, description: &str) -> ParserError {
+        ParserError{
+            token: token,
+            description: String::from(description),
+        }
+    }
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Syntax error: [Line {}] {} ", self.token.line, self.description)
+    }
+}
+
+impl std::error::Error for ParserError {}

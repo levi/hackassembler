@@ -1,5 +1,5 @@
 #[derive(Debug,Clone,PartialEq)]
-pub enum TokenType {
+pub enum TokenKind {
     Symbol(String),
     Address(u32),
     Identifier(String),
@@ -27,14 +27,14 @@ pub enum TokenType {
 
 #[derive(Debug,Clone,PartialEq)]
 pub struct Token {
-    pub token: TokenType,
+    pub kind: TokenKind,
     pub line: u32,
 }
 
 impl Token {
-    pub fn new(token: TokenType, line: u32) -> Token {
+    pub fn new(kind: TokenKind, line: u32) -> Token {
         return Token {
-            token: token,
+            kind: kind,
             line: line,
         }
     }
