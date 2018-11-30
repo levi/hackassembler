@@ -1,5 +1,6 @@
 use token::{Token, TokenType};
 
+#[derive(Debug)]
 pub struct CodeError {
     description: String,
 }
