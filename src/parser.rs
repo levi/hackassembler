@@ -1,7 +1,7 @@
 use std::vec::Vec;
 use token::*;
 use token::TokenType::*;
-use code::{Code, Expression};
+use code::{Instruction, Expression};
 
 #[derive(Debug)]
 pub struct ParserError {
@@ -33,8 +33,8 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Code>> { 
-        let mut codes: Vec<Code> = Vec::new();
+    pub fn parse(&mut self) -> Result<Vec<Instruction>> { 
+        let mut codes: Vec<Instruction> = Vec::new();
 
         while !self.at_end() {
             match self.statement() {
@@ -48,10 +48,10 @@ impl Parser {
         Ok(codes)
     }
 
-    fn statement(&mut self) -> Result<Code> {
+    fn statement(&mut self) -> Result<Instruction> {
         let statement = match self.peek().token {
-            Identifier(_) => self.a_instruction()?,
-            Label(_) => self.label()?,
+            Symbol(_) => self.symbol()?,
+            Address(_) | Identifier(_) => self.a_instruction()?,
             _ => self.c_instruction()?, 
         };
 
@@ -60,16 +60,16 @@ impl Parser {
         Ok(statement)
     }
 
-    fn label(&mut self) -> Result<Code> {
-        Ok(Code::Label(self.push()))
+    fn symbol(&mut self) -> Result<Instruction> {
+        Ok(Instruction::Symbol(self.push()))
     }
 
-    fn a_instruction(&mut self) -> Result<Code> {
-        Ok(Code::AInstruction(self.push()))
+    fn a_instruction(&mut self) -> Result<Instruction> {
+        Ok(Instruction::AInstruction(self.push()))
     }
 
-    fn c_instruction(&mut self) -> Result<Code> {
-        Ok(Code::CInstruction{
+    fn c_instruction(&mut self) -> Result<Instruction> {
+        Ok(Instruction::CInstruction{
             dest: self.dest()?,
             comp: self.comp()?,
             jump: self.jump()?,

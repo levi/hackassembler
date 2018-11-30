@@ -1,6 +1,7 @@
 #[derive(Debug,Clone,PartialEq)]
 pub enum TokenType {
-    Label(String),
+    Symbol(String),
+    Address(u32),
     Identifier(String),
     Equal,
     Plus,

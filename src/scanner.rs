@@ -69,16 +69,22 @@ impl<'a> Scanner<'a> {
         match cursor {
             '\0' => Ok(self.token(TokenType::NewLine)),
             '@' => {
-                let identifier = self.grab_while(|c| !c.is_whitespace());
-                Ok(self.token(TokenType::Identifier(identifier)))
+                let value = self.grab_while(|c| !c.is_whitespace());
+                Ok(self.token(match value.parse::<u32>() {
+                    Some(n) => TokenType::Address(n),
+                    None => TokenType::Identifier(value),
+                }))
             },
             '(' => {
+                if self.peek().is_digit(10) {
+                    return Err(self.scanner_error("Symbol cannot start with a digit"));
+                }
                 let s = self.grab_while(|c| c != ')' && !c.is_whitespace());
                 if self.peek != ')' {
-                    return Err(self.scanner_error("Expected label to be terminated by closing )"));
+                    return Err(self.scanner_error("Expected Symbol to be terminated by closing )"));
                 }
                 let _ = self.advance();
-                Ok(self.token(TokenType::Label(s)))
+                Ok(self.token(TokenType::Symbol(s)))
             },
             'A' => Ok(self.token(TokenType::ARegister)),
             'D' => Ok(self.token(TokenType::DRegister)),
@@ -153,7 +159,7 @@ impl<'a> Scanner<'a> {
 
     fn take_while<F>(&mut self, s: &mut String, predicate: F) where F: Fn(char) -> bool {
         while predicate(self.peek) {
-            s.push(self.advance());
+            s.push(self.push());
         }
     }
 

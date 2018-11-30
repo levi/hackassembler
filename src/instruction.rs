@@ -1,28 +1,28 @@
 use token::{Token, TokenType};
 
 #[derive(Debug)]
-pub struct CodeError {
+pub struct InstructionError {
     description: String,
 }
 
-impl CodeError {
-    fn new(description: &str) -> CodeError {
-        CodeError {
+impl InstructionError {
+    fn new(description: &str) -> InstructionError {
+        InstructionError {
             description: String::from(description),
         }
     }
 }
 
-type Result<T> = std::result::Result<T, CodeError>;
+type Result<T> = std::result::Result<T, InstructionError>;
 
 #[derive(Debug)]
-pub enum Code {
-    Label(Token),
+pub enum Instruction {
+    Symbol(Token),
     AInstruction(Token),
     CInstruction { dest: Vec<Token>, comp: Expression, jump: Option<Token> }
 }
 
-impl Code {
+impl Instruction {
     pub fn binary_string(&self) -> Result<Option<String>> {
         let binary = self.binary()?;
         match binary {
@@ -37,14 +37,38 @@ impl Code {
         }
     }
 
+    pub fn identifier_symbol(&self) -> Option<String> {
+        match self {
+            Instruction::Symbol(t) => {
+                match t.token {
+                    TokenType::Symbol(i) => Some(i),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
+
     pub fn binary(&self) -> Result<Option<Vec<u8>>> {
         match self {
-            Code::Label(_) => Ok(None),
-            Code::AInstruction(_) => Ok(None),
-            Code::CInstruction { dest, comp, jump } => {
+            Instruction::Symbol(_) => Ok(None),
+            Instruction::AInstruction(t) => Ok(Some(self.a_binary(&t)?)),
+            Instruction::CInstruction { dest, comp, jump } => {
                 let binary = self.c_binary(dest, comp, jump)?;
                 Ok(Some(binary))
             },
+        }
+    }
+
+    fn a_binary(&self, token: &Token) -> Result<Vec<u8>> {
+        match token.token {
+            TokenType::Address(n) => {
+                if n > std::u16::MAX as u32 {
+                    return Err(self.error("Address value greater than 16-bit address width"))
+                }
+                Ok(format!("{:b}", n as u16).chars().map(|i| i.to_digit(10).unwrap() as u8).collect())
+            },
+            _ => Err(self.error("Label a instructions not yet supported")),
         }
     }
 
@@ -171,8 +195,8 @@ impl Code {
         }
     }
 
-    fn error(&self, description: &str) -> CodeError {
-        CodeError::new(description)
+    fn error(&self, description: &str) -> InstructionError {
+        InstructionError::new(description)
     }
 }
 
