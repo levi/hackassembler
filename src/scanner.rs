@@ -86,8 +86,8 @@ impl<'a> Scanner<'a> {
             '=' => Ok(self.token(TokenType::Equal)),
             '-' => Ok(self.token(TokenType::Minus)),
             '+' => Ok(self.token(TokenType::Plus)),
-            '&' => Ok(self.token(TokenType::Ampersand)),
-            '|' => Ok(self.token(TokenType::Pipe)),
+            '&' => Ok(self.token(TokenType::And)),
+            '|' => Ok(self.token(TokenType::Or)),
             '!' => Ok(self.token(TokenType::Not)),
             ';' => Ok(self.token(TokenType::Semicolon)),
             '/' => {

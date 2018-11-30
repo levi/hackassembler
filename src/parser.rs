@@ -100,19 +100,36 @@ impl Parser {
     }
 
     fn comp(&mut self) -> Result<Expression> {
-        let left = self.unary()?;
-
-        if self.match_any(&[Plus, Minus, Ampersand, Pipe]) {
+        if self.match_any(&[Minus, Not]) {
             let operator = self.previous();
-            let right = self.primary()?;
-            return Ok(Expression::Binary{
-                left: Box::new(left),
+            let right = self.literal()?;
+            return Ok(Expression::Unary{
                 operator: operator,
-                right: Box::new(right),
+                right: right,
+            })
+        }
+
+        let left = self.literal()?;
+
+        if self.match_any(&[Plus, Minus, And, Or]) {
+            let operator = self.previous();
+            let right = self.literal()?;
+            return Ok(Expression::Binary{
+                left: left,
+                operator: operator,
+                right: right,
             });
         }
 
-        Ok(left)
+        Ok(Expression::Literal(left))
+    }
+
+    fn literal(&mut self) -> Result<Token> {
+        if self.match_any(&[ARegister, DRegister, Memory, Number(0), Number(1)]) {
+            return Ok(self.previous())
+        }
+
+        Err(self.error("Unexpected expression"))
     }
 
     fn jump(&mut self) -> Result<Option<Token>> {
@@ -133,27 +150,6 @@ impl Parser {
             }
         }
         Ok(jump)
-    }
-
-    fn unary(&mut self) -> Result<Expression> {
-        if self.match_any(&[Minus, Not]) {
-            let operator = self.previous();
-            let right = self.primary()?;
-            return Ok(Expression::Unary{
-                operator: operator,
-                right: Box::new(right),
-            })
-        }
-
-        self.primary()
-    }
-
-    fn primary(&mut self) -> Result<Expression> {
-        if self.match_any(&[ARegister, DRegister, Memory, Number(0), Number(1)]) {
-            return Ok(Expression::Literal(self.previous()))
-        }
-
-        Err(self.error("Unexpected expression"))
     }
 
     fn error(&self, description: &str) -> ParserError {
