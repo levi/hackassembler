@@ -52,21 +52,21 @@ impl Code {
         binary[3] = self.opcode(&comp) as u8;
 
         let comp = self.comp_bits(&comp)?;
-        binary.append(&mut comp);
+        binary.extend(&comp);
         let dest = self.dest_bits(&dest)?;
-        binary.append(&mut dest);
+        binary.extend(&dest);
         let jump = self.jump_bits(&jump)?;
-        binary.append(&mut jump);
+        binary.extend(&jump);
 
         Ok(binary)
     }
 
     fn opcode(&self, comp: &Expression) -> bool {
         match comp {
-            Expression::Binary{ left, operator, right } => {
+            Expression::Binary{ left, operator: _, right } => {
                 self.memory_code(&left) || self.memory_code(&right)
             },
-            Expression::Unary{ operator, right } => self.memory_code(&right),
+            Expression::Unary{ operator: _, right } => self.memory_code(&right),
             Expression::Literal(t) => self.memory_code(&t)
         }
     }
@@ -83,24 +83,24 @@ impl Code {
         match comp {
             Expression::Binary{ left, operator, right } => {
                 match operator.token {
-                    Plus => match (left.token, right.token) {
+                    Plus => match (&left.token, &right.token) {
                         (DRegister, Number(1)) => Ok(vec![0,1,1,1,1,1]),
                         (ARegister, Number(1)) | (Memory, Number(1)) => Ok(vec![1,1,0,1,1,1]),
                         (DRegister, ARegister) | (DRegister, Memory) => Ok(vec![0,0,0,0,1,0]),
                         _ => Err(self.error("Invalid + binary expression")),
                     },
-                    Minus => match (left.token, right.token) {
+                    Minus => match (&left.token, &right.token) {
                         (DRegister, Number(1)) => Ok(vec![0,0,1,1,1,0]),
                         (ARegister, Number(1)) | (Memory, Number(1)) => Ok(vec![1,1,0,0,1,0]),
                         (DRegister, ARegister) | (DRegister, Memory) => Ok(vec![0,1,0,0,1,1]),
                         (ARegister, DRegister) | (Memory, DRegister) => Ok(vec![0,0,0,1,1,1]),
                         _ => Err(self.error("Invalid - binary expression")),
                     },
-                    And => match (left.token, right.token) {
+                    And => match (&left.token, &right.token) {
                         (DRegister, ARegister) | (DRegister, Memory) => Ok(vec![0,0,0,0,0,0]),
                         _ => Err(self.error("Invalid & binary expression")),
                     },
-                    Or => match (left.token, right.token) {
+                    Or => match (&left.token, &right.token) {
                         (DRegister, ARegister) | (DRegister, Memory) => Ok(vec![0,1,0,1,0,1]),
                         _ => Err(self.error("Invalid | binary expression")),
                     },
