@@ -71,18 +71,16 @@ impl Assembler {
 
         let mut rom_address: u16 = 0;
         for i in instructions {
-            match i.identifier_symbol() {
+            match i.symbol_string() {
                 Some(s) => self.symbols.add_symbol(s, rom_address),
                 None => rom_address += 1,
             };
         }
 
         for i in instructions {
-            let binary = i.binary_string()?;
-            match binary {
-                Some(b) => out.push_str(&format!("{}\n", b)),
-                None => {},
-            };
+            if let Some(b) = i.binary_string(&self.symbols)? {
+                out.push_str(&format!("{}\n", b));
+            }
         }
 
         Ok(out)
