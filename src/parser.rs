@@ -35,8 +35,8 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Instruction> {
         let statement = match self.peek().kind {
-            Symbol(_) => self.symbol()?,
-            Address(_) | Identifier(_) => self.a_instruction()?,
+            Label(_) => self.symbol()?,
+            Address(_) | Symbol(_) => self.a_instruction()?,
             _ => self.c_instruction()?, 
         };
 
@@ -46,7 +46,7 @@ impl Parser {
     }
 
     fn symbol(&mut self) -> Result<Instruction> {
-        Ok(Instruction::Symbol(self.push()))
+        Ok(Instruction::Label(self.push()))
     }
 
     fn a_instruction(&mut self) -> Result<Instruction> {

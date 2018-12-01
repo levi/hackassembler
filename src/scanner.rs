@@ -57,7 +57,7 @@ impl<'a> Scanner<'a> {
                 let value = self.grab_while(|c| !c.is_whitespace());
                 Ok(self.token(match value.parse::<u32>() {
                     Ok(n) => TokenKind::Address(n),
-                    Err(_) => TokenKind::Identifier(value),
+                    Err(_) => TokenKind::Symbol(value),
                 }))
             },
             '(' => {
@@ -69,7 +69,7 @@ impl<'a> Scanner<'a> {
                     return Err(self.scanner_error("Expected Symbol to be terminated by closing )"));
                 }
                 let _ = self.push();
-                Ok(self.token(TokenKind::Symbol(s)))
+                Ok(self.token(TokenKind::Label(s)))
             },
             'A' => Ok(self.token(TokenKind::ARegister)),
             'D' => Ok(self.token(TokenKind::DRegister)),

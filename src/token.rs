@@ -1,8 +1,8 @@
 #[derive(Debug,Clone,PartialEq)]
 pub enum TokenKind {
+    Label(String),
     Symbol(String),
     Address(u32),
-    Identifier(String),
     Equal,
     Plus,
     Minus,

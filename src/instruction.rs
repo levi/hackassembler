@@ -5,7 +5,7 @@ type Result<T> = std::result::Result<T, InstructionError>;
 
 #[derive(Debug)]
 pub enum Instruction {
-    Symbol(Token),
+    Label(Token),
     AInstruction(Token),
     CInstruction { dest: Vec<Token>, comp: Expression, jump: Option<Token> }
 }
@@ -13,32 +13,31 @@ pub enum Instruction {
 impl Instruction {
     pub fn symbol_string(&self) -> Option<&str> {
         match self {
-            Instruction::Symbol(t) => match t.kind {
-                TokenKind::Symbol(ref i) => Some(i),
+            Instruction::Label(t) => match t.kind {
+                TokenKind::Label(ref i) => Some(i),
                 _ => None,
             },
             _ => None,
         }
     }
 
-    pub fn binary_string(&self, symbols: &SymbolTable) -> Result<Option<String>> {
+    pub fn binary_string(&self, symbols: &mut SymbolTable) -> Result<Option<String>> {
         if let Some(b) = self.binary(symbols)? {
             return Ok(Some(format!("{:016b}", b)))
         }
-
         Ok(None)
     }
 
-    pub fn binary(&self, symbols: &SymbolTable) -> Result<Option<u16>> {
+    pub fn binary(&self, symbols: &mut SymbolTable) -> Result<Option<u16>> {
         use instruction::Instruction::*;
         match self {
-            Symbol(_) => Ok(None),
+            Label(_) => Ok(None),
             AInstruction(t) => Ok(Some(self.a_binary(&t, symbols)?)),
             CInstruction { dest, comp, jump } => Ok(Some(self.c_binary(dest, comp, jump)?)),
         }
     }
 
-    fn a_binary(&self, token: &Token, symbols: &SymbolTable) -> Result<u16> {
+    fn a_binary(&self, token: &Token, symbols: &mut SymbolTable) -> Result<u16> {
         match token.kind {
             TokenKind::Address(n) => {
                 if n > std::u16::MAX as u32 {
@@ -46,12 +45,7 @@ impl Instruction {
                 }
                 Ok(n as u16)
             },
-            TokenKind::Identifier(ref s) => {
-                match symbols.address_for(&s) {
-                    Some(b) => Ok(*b),
-                    None => Err(self.error(&format!("Undefined symbol: {}", s), token.line))
-                }
-            },
+            TokenKind::Symbol(ref s) => Ok(symbols.address_for(&s).clone()),
             _ => Err(self.error("Token cannot be encoded as a instruction", token.line))
         }
     }

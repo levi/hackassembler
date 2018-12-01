@@ -1,48 +1,60 @@
 use std::collections::HashMap;
 
 pub struct SymbolTable {
-    symbols: HashMap<String, u16>,
+    ram: HashMap<String, u16>,
+    var_address: u16,
+    rom: HashMap<String, u16>,
 }
 
 impl SymbolTable {
     pub fn new() -> SymbolTable {
+        let mut ram: HashMap<String, u16> = HashMap::new();
+
+        // Define pre-defined symbols
+        ram.insert(String::from("SP"), 0x0);
+        ram.insert(String::from("LCL"), 0x1);
+        ram.insert(String::from("ARG"), 0x2);
+        ram.insert(String::from("THIS"), 0x3);
+        ram.insert(String::from("THAT"), 0x4);
+        ram.insert(String::from("R0"), 0x0);
+        ram.insert(String::from("R1"), 0x1);
+        ram.insert(String::from("R2"), 0x2);
+        ram.insert(String::from("R3"), 0x3);
+        ram.insert(String::from("R4"), 0x4);
+        ram.insert(String::from("R5"), 0x5);
+        ram.insert(String::from("R6"), 0x6);
+        ram.insert(String::from("R7"), 0x7);
+        ram.insert(String::from("R8"), 0x8);
+        ram.insert(String::from("R9"), 0x9);
+        ram.insert(String::from("R10"), 0xA);
+        ram.insert(String::from("R11"), 0xB);
+        ram.insert(String::from("R12"), 0xC);
+        ram.insert(String::from("R13"), 0xD);
+        ram.insert(String::from("R14"), 0xE);
+        ram.insert(String::from("R15"), 0xF);
+        ram.insert(String::from("SCREEN"), 0x4000);
+        ram.insert(String::from("KBD"), 0x6000);
+
         SymbolTable {
-            symbols: HashMap::new(),
+            ram: ram,
+            var_address: 0x10,
+            rom: HashMap::new(),
         }
     }
 
     pub fn add_symbol(&mut self, symbol: &str, address: u16) {
-        if self.address_for(symbol) == None {
-            self.symbols.insert(symbol.to_string(), address);
+        if self.rom.get(symbol).is_none() {
+            self.rom.insert(symbol.to_string(), address);
         }
     }
 
-    pub fn address_for(&self, symbol: &str) -> Option<&u16> {
-        match symbol {
-            "SP" => Some(&0),
-            "LCL" => Some(&1),
-            "ARG" => Some(&2),
-            "THIS" => Some(&3),
-            "THAT" => Some(&4),
-            "R0" => Some(&0),
-            "R1" => Some(&1),
-            "R2" => Some(&2),
-            "R3" => Some(&3),
-            "R4" => Some(&4),
-            "R5" => Some(&5),
-            "R6" => Some(&6),
-            "R7" => Some(&7),
-            "R8" => Some(&8),
-            "R9" => Some(&9),
-            "R10" => Some(&10),
-            "R11" => Some(&11),
-            "R12" => Some(&12),
-            "R13" => Some(&13),
-            "R14" => Some(&14),
-            "R15" => Some(&15),
-            "SCREEN" => Some(&16384),
-            "KBD" => Some(&24576),
-            _ => self.symbols.get(symbol),  
-        }
+    pub fn address_for(&mut self, symbol: &str) -> &u16 {
+        self.rom.get(symbol).or(self.ram.get(symbol)).unwrap_or_else(|| {
+            // Support variable symbols
+            let address = self.var_address;
+            self.ram.insert(symbol.to_string(), address);
+            self.var_address += 1;
+            address
+        })
     }
 }

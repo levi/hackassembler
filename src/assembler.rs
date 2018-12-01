@@ -78,7 +78,7 @@ impl Assembler {
         }
 
         for i in instructions {
-            if let Some(b) = i.binary_string(&self.symbols)? {
+            if let Some(b) = i.binary_string(&mut self.symbols)? {
                 out.push_str(&format!("{}\n", b));
             }
         }
