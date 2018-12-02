@@ -48,13 +48,15 @@ impl SymbolTable {
         }
     }
 
-    pub fn address_for(&mut self, symbol: &str) -> &u16 {
-        self.rom.get(symbol).or(self.ram.get(symbol)).unwrap_or_else(|| {
-            // Support variable symbols
-            let address = self.var_address;
-            self.ram.insert(symbol.to_string(), address);
-            self.var_address += 1;
-            address
-        })
+    pub fn address_for(&mut self, symbol: &str) -> u16 {
+        let r = &mut self.ram;
+        let va = &mut self.var_address;
+        self.rom.get(symbol).unwrap_or_else(|| {
+            &*r.entry(symbol.to_string()).or_insert_with(|| {
+                let address = *va;
+                *va += 1;
+                address
+            })
+        }).clone()
     }
 }
