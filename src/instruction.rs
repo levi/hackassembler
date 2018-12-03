@@ -3,7 +3,7 @@ use symbol_table::SymbolTable;
 
 type Result<T> = std::result::Result<T, InstructionError>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Instruction {
     Label(Token),
     AInstruction(Token),
@@ -195,7 +195,7 @@ impl std::fmt::Display for InstructionError {
 
 impl std::error::Error for InstructionError {}
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Expression {
     Binary { left: Token, operator: Token, right: Token },
     Unary { operator: Token, right: Token },

@@ -79,6 +79,7 @@ impl Parser {
             for _ in 0..dest.len() {
                 self.pop();
             }
+            return Ok(Vec::new())
         }
 
         Ok(dest)
@@ -228,3 +229,29 @@ impl std::fmt::Display for ParserError {
 }
 
 impl std::error::Error for ParserError {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn register_jump() {
+        use token::{Token, TokenKind};
+        use parser::Parser;
+        use instruction::{Instruction, Expression};
+
+        let mut p = Parser::new(vec![
+            Token::new(TokenKind::DRegister, 0), 
+            Token::new(TokenKind::Semicolon, 0), 
+            Token::new(TokenKind::JumpNotEqual, 0),
+            Token::new(TokenKind::NewLine, 0),
+            Token::new(TokenKind::EOF, 1),
+        ]);
+        let t = p.parse();
+        assert_eq!(t.unwrap(), vec![
+            Instruction::CInstruction {
+                dest: Vec::new(),
+                comp: Expression::Literal(Token::new(TokenKind::DRegister, 0)),
+                jump: Some(Token::new(TokenKind::JumpNotEqual, 0)),
+            }
+        ]);
+    }
+}

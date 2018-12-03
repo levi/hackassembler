@@ -186,3 +186,23 @@ impl std::fmt::Display for ScannerError {
 }
 
 impl std::error::Error for ScannerError {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn register_jump() {
+        use token::{Token, TokenKind};
+        use scanner::Scanner;
+        let s = Scanner::new("D;JNE\n\0", 0);
+        let mut tokens = Vec::new();
+        for token in s {
+            tokens.push(token.unwrap());
+        }
+        assert_eq!(tokens, vec![
+            Token::new(TokenKind::DRegister, 0), 
+            Token::new(TokenKind::Semicolon, 0), 
+            Token::new(TokenKind::JumpNotEqual, 0),
+            Token::new(TokenKind::NewLine, 0)
+        ])
+    }
+}
