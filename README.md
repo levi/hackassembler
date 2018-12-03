@@ -1,6 +1,6 @@
 # hackassembler
 
-A Rust implementation of an assembler for the [Hack assembly language](https://www.nand2tetris.org/project06) defined in awesome NAND2Tetris textbook.
+A Rust implementation of an assembler for the [Hack assembly language](https://www.nand2tetris.org/project06) defined in the forever awesome NAND2Tetris textbook.
 
 ## Install
 
